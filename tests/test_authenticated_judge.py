@@ -32,6 +32,7 @@ class AuthenticatedJudgeTests(unittest.IsolatedAsyncioTestCase):
                        'submission_id': 987, 'status_runtime': '3 ms', 'status_memory': '16.25 MB',
                        'total_correct': 10, 'total_testcases': 10}]
         self.start_error = None
+        self.interpret_id = 'runcode_fixture'
         self.identity = {'questionId': '42', 'questionFrontendId': '1', 'titleSlug': 'two-sum',
                          'codeSnippets': [{'langSlug': 'python3'}]}
 
@@ -52,7 +53,7 @@ class AuthenticatedJudgeTests(unittest.IsolatedAsyncioTestCase):
                 if request.method == 'POST':
                     if self.start_error:
                         raise self.start_error
-                    result = {'interpret_id': 'runcode_fixture'} if 'interpret_solution' in request.url.path else {'submission_id': 987}
+                    result = {'interpret_id': self.interpret_id} if 'interpret_solution' in request.url.path else {'submission_id': 987}
                 else:
                     result = self.polls.pop(0)
             return httpx2.Response(200, stream=httpx2.ByteStream(json.dumps(result).encode()))
@@ -89,6 +90,33 @@ class AuthenticatedJudgeTests(unittest.IsolatedAsyncioTestCase):
         with Tracker(self.root) as tracker:
             self.assertFalse(tracker.attempt(1)['acceptance']['accepted'])
             self.assertEqual(tracker.attempt(1)['judge_results'][0]['kind'], 'test')
+
+    async def test_timestamp_interpret_id_is_preserved_for_polling_and_deduplication(self):
+        # Real response format documented by fspv/leetcode-swagger, swagger.yml.
+        self.interpret_id = 'runcode_1627219627.5662382_EI7iasnhLm'
+        self.polls[0]['submission_id'] = self.interpret_id
+        operation = await self.service.start(1, self.snapshot, 'test', '[2,7,11,15]\n9')
+        self.assertEqual(operation['state'], 'pending')
+        self.assertEqual(operation['remote_id'], self.interpret_id)
+        result = await self.service.status(operation['operation_id'])
+        self.assertEqual(result['verdict'], 'accepted')
+        self.assertEqual(self.sent[-1][0].url.path, f'/submissions/detail/{self.interpret_id}/check/')
+        repeated = await self.service.start(1, self.snapshot, 'test', '[2,7,11,15]\n9')
+        self.assertEqual(repeated, result)
+        self.assertEqual(sum(r.url.path.endswith('/interpret_solution/') for r, _ in self.sent), 1)
+        with Tracker(self.root) as tracker:
+            self.assertFalse(tracker.attempt(1)['acceptance']['accepted'])
+
+    async def test_interpret_ids_cannot_change_the_request_path_or_submission_id_rules(self):
+        from leetcode_coach.leetcode_judge import JudgeError, remote_id
+        for identifier in ('runcode_x/../secret', 'runcode_x%2Fsecret', 'runcode_x?query=1',
+                           'runcode_x#fragment', 'runcode_x\\secret', 'runcode_x\n',
+                           'runcode_' + 'a' * 101, '', None, True, [], {}):
+            with self.subTest(identifier=identifier), self.assertRaises(JudgeError):
+                await self.service.api.check(identifier, 'test', 'two-sum', self.credentials)
+        self.assertEqual(self.sent, [])
+        with self.assertRaises(JudgeError):
+            remote_id('runcode_1627219627.5662382_EI7iasnhLm', 'submission')
 
     async def test_lost_response_is_persisted_and_never_reposts_on_retry_or_restart(self):
         import httpx2

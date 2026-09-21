@@ -13,7 +13,9 @@ class JudgeError(ValueError):
 def remote_id(value, kind):
     if type(value) is int:
         value = str(value)
-    pattern = r'[1-9][0-9]{0,19}' if kind == 'submission' else r'(?:[1-9][0-9]{0,19}|runcode_[A-Za-z0-9_-]{1,100})'
+    # Test IDs include decimal timestamps, e.g. runcode_1627219627.5662382_EI7iasnhLm.
+    # Keep the prefix and path-safe alphabet; submission IDs remain numeric only.
+    pattern = r'[1-9][0-9]{0,19}' if kind == 'submission' else r'(?:[1-9][0-9]{0,19}|runcode_[A-Za-z0-9_.-]{1,100})'
     if not isinstance(value, str) or not re.fullmatch(pattern, value):
         raise JudgeError('LeetCode returned an invalid judge ID. Do not automatically resend.')
     return value

@@ -162,6 +162,13 @@ the coach must not create new snapshots to bypass this protection. If an operati
 has a remote ID, it can be polled again. Account/session errors or website blocks
 require local login or the browser workflow; the server does not bypass them.
 
+If version 1.1.0 returned **invalid judge ID** for a test, update/reload the MCP
+server to 1.1.1 or later. That version incorrectly rejected the decimal timestamp
+in LeetCode test IDs. The old unknown operation cannot be recovered because its ID
+was not retained. Keep it in history; after checking any available website result,
+explicitly request a fresh test with a new snapshot if needed. Do not delete or
+rewrite the unknown operation to force a retry.
+
 For the browser workflow, snapshot your source, pause timing, submit that exact code
 on the website, then record the matching result with `record_judge_result`. This
 always records **user-reported** evidence. Passing `source: mcp` cannot promote it.
