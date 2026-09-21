@@ -22,5 +22,6 @@ jobs:
         with:
           python-version: '3.14'
       - run: python -m venv .venv
-      - run: .venv/bin/python -m pip install --require-hashes --only-binary=:all: -r requirements-mcp.txt
+      - run: |
+          .venv/bin/python -m pip install --require-hashes --only-binary=:all: -r requirements-mcp.txt
       - run: make check-mcp
