@@ -164,6 +164,11 @@ counts, independent solves, phase durations, hints, repeated mistakes, and revie
 due. Exclude unconfirmed timing from timing aggregates and show how many samples
 were excluded. Separate first encounters from repeat solves.
 
+Independence requires explicit debrief confirmation of original work without
+coach or outside solution assistance. Zero logged hints is insufficient. Imported
+code with unknown authorship/help stays unconfirmed, and recorded help prevents
+the independent designation. This clarification came from behavioral validation.
+
 Use a simple, explainable review policy: one day after failure, substantial help,
 or incomplete teach-back; seven days after an independent accepted solve with
 teach-back; thirty days after a successful independent review with teach-back.

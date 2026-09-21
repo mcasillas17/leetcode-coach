@@ -1,0 +1,12 @@
+{
+  "leetcode.workspaceFolder": "${workspaceFolder}/workspace/leetcode",
+  "leetcode.filePath": {
+    "default": {
+      "folder": "",
+      "filename": "${id}.${kebab-case-name}.${ext}"
+    }
+  },
+  "leetcode.defaultLanguage": "python3",
+  "leetcode.endpoint": "leetcode",
+  "leetcode.showCommentDescription": false
+}

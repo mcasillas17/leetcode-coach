@@ -32,7 +32,7 @@
 
 **Interfaces:** `Tracker(root, clock=utc_now)` exposes `start`, `phase`, `pause`, `resume`, `recover`, `confirm_timing`, `correct_interval`, `hint`, `snapshot`, `judge`, `finish`, `feedback`, `attempt`, `status`, `backup`, and `restore`. Public methods return JSON-compatible dictionaries. Explicit attempt IDs prevent accidental changes to a different attempt.
 
-- [ ] Write controlled-clock tests before implementation, including:
+- [x] Write controlled-clock tests before implementation, including:
 
   ```python
   attempt = tracker.start('two-sum', 1, 'Two Sum', 'Easy')
@@ -47,10 +47,10 @@
   assert tracker.attempt(attempt['id'])['timing']['active_seconds'] == 210
   ```
 
-- [ ] Run `python3 -m unittest discover -s tests -v`; expect missing module failure.
-- [ ] Create transactional schema and tracker. Use `BEGIN IMMEDIATE`, parameterized SQL, a unique partial index for unfinished attempts, append-only events, stored snapshot bytes, explicit evidence provenance, and separate interval adjustments.
-- [ ] Verify pause/restart, repeated phases, recovery confirmation, clock rollback correction, repeated finish, duplicate judge results, snapshot immutability, invalid paths/results, and consistent backup/restore using the same test command; expect all tracker cases to pass.
-- [ ] Commit the independently tested tracker.
+- [x] Run `python3 -m unittest discover -s tests -v`; expect missing module failure.
+- [x] Create transactional schema and tracker. Use `BEGIN IMMEDIATE`, parameterized SQL, a unique partial index for unfinished attempts, append-only events, stored snapshot bytes, explicit evidence provenance, and separate interval adjustments.
+- [x] Verify pause/restart, repeated phases, recovery confirmation, clock rollback correction, repeated finish, duplicate judge results, snapshot immutability, invalid paths/results, and consistent backup/restore using the same test command; expect all tracker cases to pass.
+- [x] Commit the independently tested tracker.
 
 ## Task 2: CLI and progress reports
 
@@ -58,11 +58,11 @@
 
 **Interfaces:** CLI uses `Tracker`; every command supports machine-readable JSON through `--json`. `build_report(tracker, group_by, session_id)` returns attempts, totals, groups, and reviews; `render_markdown(report)` emits the human-readable view.
 
-- [ ] Add subprocess tests for a fresh workspace, an offline practice cycle, invalid CLI arguments, and non-destructive backup/restore. Add report tests separating first/repeat and assisted/independent attempts and excluding unconfirmed timing.
-- [ ] Run `python3 -m unittest discover -s tests -v`; expect missing CLI/report behavior.
-- [ ] Implement explicit argparse commands and JSON feedback import, validate object shapes and file sizes, and render Markdown with escaped user content. Reports include per-phase totals, hint counts, mistakes, acceptance evidence, review dates, and sample counts.
-- [ ] Run the complete suite and the documented offline commands in a temporary root; expect accurate results and no changes to real progress.
-- [ ] Commit CLI and reports.
+- [x] Add subprocess tests for a fresh workspace, an offline practice cycle, invalid CLI arguments, and non-destructive backup/restore. Add report tests separating first/repeat and assisted/independent attempts and excluding unconfirmed timing.
+- [x] Run `python3 -m unittest discover -s tests -v`; expect missing CLI/report behavior.
+- [x] Implement explicit argparse commands and JSON feedback import, validate object shapes and file sizes, and render Markdown with escaped user content. Reports include per-phase totals, hint counts, mistakes, acceptance evidence, review dates, and sample counts.
+- [x] Run the complete suite and the documented offline commands in a temporary root; expect accurate results and no changes to real progress.
+- [x] Commit CLI and reports.
 
 ## Task 3: Coaching and integrations
 
@@ -70,16 +70,25 @@
 
 **Interfaces:** Skill invokes the documented CLI; MCP setup enables only problem/user/judge tools whose schemas were inspected. The MCP probe initializes the pinned external server, lists tools, and optionally retrieves one public problem. It never uses credentials or submits code.
 
-- [ ] Record independent baseline responses for hints, full-answer requests, unverified acceptance, recovery after a break, and ambiguous requests to improve code.
-- [ ] Write concise coaching instructions with a worked CLI example, recovery protocol, judge provenance, immutable snapshot submission flow, debrief, and review policy.
-- [ ] Run independent scenarios with the skill and real CLI in a temporary root; inspect resulting responses and records. Fix demonstrated gaps.
-- [ ] Pin the npm server release and smoke-test initialize/tools/list. Inspect run/submit input schemas; probe public problem retrieval separately and report any service failure honestly.
-- [ ] Validate skill frontmatter with the skill-creator validator, run all tests, and document setup, backup/restore, timer semantics, failure recovery, optional authentication, and startup prompts.
-- [ ] Request one independent whole-change code review; resolve material findings with regression tests.
-- [ ] Commit the verified result and hand off with exact run commands and integration limits.
+- [x] Record independent baseline responses for hints, full-answer requests, unverified acceptance, recovery after a break, and ambiguous requests to improve code.
+- [x] Write concise coaching instructions with a worked CLI example, recovery protocol, judge provenance, immutable snapshot submission flow, debrief, and review policy.
+- [x] Run independent scenarios with the skill and real CLI in a temporary root; inspect resulting responses and records. Fix demonstrated gaps.
+- [x] Pin the npm server release and smoke-test initialize/tools/list. Inspect run/submit input schemas; probe public problem retrieval separately and report any service failure honestly.
+- [x] Validate skill frontmatter with the skill-creator validator, run all tests, and document setup, backup/restore, timer semantics, failure recovery, optional authentication, and startup prompts.
+- [x] Request one independent whole-change code review; resolve material findings with regression tests.
+- [x] Commit the verified result and hand off with exact run commands and integration limits.
 
 ## Execution record
 
 - Ruling: Work on `codex/leetcode-coach` in the user's clean dedicated clone, preserving the requested path; no competing code or uncommitted work requires another checkout.
 - Ruling: Proceed with inline implementation on the user's explicit request, without another approval cycle.
 - Pre-flight: Task 2 consumes Tracker's dictionary interface; Task 3 uses Task 2's CLI. Commands and skill examples will be tested together.
+
+- Task 1 complete: controlled-clock tracker tests failed on the missing module, then passed (15 initial cases). Commit `492d5f1`.
+- Task 2 complete: CLI/report tests failed on missing entry points, then all 22 cases passed. Commit `920683d`.
+- Task 3 complete: skill baseline and six CLI behavioral scenarios evaluated independently; ownership follow-up passed. Pinned MCP initialized and fetched public Two Sum metadata; authenticated tools inspected, not executed.
+- Ruling: Independence requires explicit debrief confirmation, not merely zero logged hints. Behavioral testing exposed the ambiguity; the tracker, skill, spec, and reports now agree.
+- Review fixes: paused-clock rollback, conflicting terminal verdicts, malformed config types, and exited-launcher pipe cleanup each reproduced in failing regression tests before correction.
+- Final review: independent reviewer verified fixes and found no remaining material issues in the focused follow-up. `make check`: 33 tests passed.
+- Integration limit: authenticated LeetCode judging and VS Code login require the user's account setup and are not claimed tested. Public MCP lookup and offline operation are verified.
+- Local setup: empty private database initialized and credential-free project MCP configuration copied into ignored `.codex/config.toml`; no sample attempts added to personal progress.
