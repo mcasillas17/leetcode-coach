@@ -39,11 +39,12 @@ class CliTests(unittest.TestCase):
         self.run_cli('finish', a, '--outcome', 'accepted')
         feedback = self.root / 'feedback.json'
         feedback.write_text(json.dumps({'approach': 'Explain invariant', 'complexity': 'O(n)', 'mistakes': []}))
-        self.run_cli('feedback', a, '--file', str(feedback), '--teach-back')
+        self.run_cli('feedback', a, '--file', str(feedback), '--teach-back', '--independent')
         self.run_cli('end-session', '--summary', 'Completed practice')
         report = self.run_cli('report', '--group-by', 'difficulty')
         self.assertEqual(report['totals']['accepted'], 1)
         self.assertEqual(report['totals']['verified_accepted'], 0)
+        self.assertEqual(report['totals']['independent_solves'], 1)
         self.assertTrue(self.run_cli('show', a)['teach_back'])
         destination = self.root / 'reports' / 'session.md'
         self.run_cli('report', '--output', str(destination))
@@ -58,6 +59,14 @@ class CliTests(unittest.TestCase):
         (self.root / 'coach.local.json').write_text('{invalid json')
         result = self.run_cli('start', 'x', '--id', '1', '--title', 'X', '--difficulty', 'Easy', success=False)
         self.assertIn('config', result.stderr.lower())
+
+    def test_malformed_config_types_return_errors_without_tracebacks(self):
+        for value in ([], {}, True, None, 1):
+            with self.subTest(value=value):
+                (self.root / 'coach.json').write_text(json.dumps({'language': value}))
+                result = self.run_cli('status', success=False)
+                self.assertIn('Config language', result.stderr)
+                self.assertNotIn('Traceback', result.stderr)
 
     def test_configured_language_and_path_are_respected_without_overwriting(self):
         self.run_cli('init')

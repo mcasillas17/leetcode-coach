@@ -48,6 +48,32 @@ class TrackerFixture(unittest.TestCase):
 
 
 class TrackerTests(TrackerFixture):
+    def test_recorded_help_prevents_independence_confirmation(self):
+        a = self.start()
+        self.tracker.hint(a, 5, 'User reports using an outside solution')
+        self.accepted(a)
+        self.tracker.finish(a, 'accepted')
+        with self.assertRaises(CoachError):
+            self.tracker.feedback(a, {'approach': 'Copied solution'}, teach_back=True, independent=True)
+
+    def test_paused_finish_rejects_clock_rollback_without_mutation(self):
+        a = self.start()
+        self.clock.advance(10)
+        self.tracker.pause(a)
+        self.clock.advance(-5)
+        with self.assertRaisesRegex(CoachError, 'Clock'):
+            self.tracker.finish(a, 'abandoned')
+        self.assertEqual(self.tracker.attempt(a)['state'], 'paused')
+
+    def test_conflicting_terminal_judge_verdicts_cannot_manufacture_acceptance(self):
+        a = self.start()
+        self.source(a)
+        snap = self.tracker.snapshot(a)
+        self.tracker.judge(a, snap['id'], 'mcp', 'wrong-answer', submission_id='123')
+        with self.assertRaisesRegex(CoachError, 'Conflicting'):
+            self.tracker.judge(a, snap['id'], 'mcp', 'accepted', submission_id='123')
+        self.assertFalse(self.tracker.attempt(a)['acceptance']['verified'])
+
     def test_phase_timing_pauses_judge_wait_and_repeated_finish(self):
         a = self.start()
         self.clock.advance(60)
@@ -187,13 +213,13 @@ class TrackerTests(TrackerFixture):
                     'correctness': 'Invariant explained', 'optimizations': 'One pass',
                     'testing': 'Duplicates covered', 'communication': 'Clear',
                     'mistakes': ['duplicate-handling'], 'next_exercise': 'Repeat independently'}
-        self.tracker.feedback(a, feedback, teach_back=True)
+        self.tracker.feedback(a, feedback, teach_back=True, independent=True)
         self.assertEqual(self.tracker.attempt(a)['review_date'], '2026-09-27')
         self.clock.advance(86400)
         b = self.start(review=True)
         self.accepted(b)
         self.tracker.finish(b, 'accepted')
-        self.tracker.feedback(b, feedback, teach_back=True)
+        self.tracker.feedback(b, feedback, teach_back=True, independent=True)
         self.assertEqual(self.tracker.attempt(b)['review_date'], '2026-10-21')
         self.assertEqual(len(self.tracker.status()['attempts']), 2)
         self.assertEqual(len(self.tracker.status()['due_reviews']), 0)

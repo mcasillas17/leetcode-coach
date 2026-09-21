@@ -103,6 +103,7 @@ def parser():
     p.add_argument('attempt', type=int)
     p.add_argument('--file', type=Path, required=True)
     p.add_argument('--teach-back', action='store_true')
+    p.add_argument('--independent', action='store_true', help='Confirm original work without coach or outside solution assistance')
     p.add_argument('--review-date')
     p = command('end-session', 'Close the session after all attempts are finished')
     p.add_argument('--summary', default='')
@@ -153,7 +154,8 @@ def dispatch(tracker, args, settings):
     if command == 'finish':
         return tracker.finish(args.attempt, args.outcome)
     if command == 'feedback':
-        return tracker.feedback(args.attempt, read_json(args.file, 'feedback'), teach_back=args.teach_back, review_date=args.review_date)
+        return tracker.feedback(args.attempt, read_json(args.file, 'feedback'), teach_back=args.teach_back,
+                                independent=args.independent, review_date=args.review_date)
     if command == 'end-session':
         return tracker.end_session(args.summary)
     if command == 'backup':

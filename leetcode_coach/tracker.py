@@ -41,7 +41,7 @@ def number(value, name):
 
 
 def choice(value, options, name):
-    if value not in options:
+    if not isinstance(value, str) or value not in options:
         raise CoachError(f'{name} must be one of: {", ".join(options)}.')
     return value
 
@@ -224,7 +224,7 @@ class Tracker:
         row = self.row(attempt_id)
         if row['state'] == 'running':
             raise CoachError('Pause or finish before confirming timing.')
-        if self.attempt(attempt_id)['timing']['active_seconds'] is None:
+        if self.attempt(attempt_id)['timing']['clock_error']:
             raise CoachError('Correct invalid intervals before confirming timing.')
         self.db.execute('UPDATE attempts SET timing_confirmed=1 WHERE id=?', (attempt_id,))
         self.event(attempt_id, 'confirm-timing', {})
@@ -296,6 +296,11 @@ class Tracker:
                                        (source, kind, submission_id)).fetchone()
             if conflict and (conflict['snapshot_id'] != snapshot_id or conflict['attempt_id'] != attempt_id):
                 raise CoachError('Submission ID is already linked to a different snapshot.')
+            terminal = self.db.execute("""SELECT verdict FROM judge_results
+                WHERE source=? AND kind=? AND submission_id=? AND verdict!='unknown'""",
+                (source, kind, submission_id)).fetchone()
+            if terminal and verdict != 'unknown' and terminal['verdict'] != verdict:
+                raise CoachError('Conflicting terminal verdict for this submission; original evidence is preserved.')
         values = (attempt_id, snapshot_id, source, kind, verdict, submission_id)
         old = self.db.execute('''SELECT * FROM judge_results WHERE attempt_id=? AND snapshot_id=?
             AND source=? AND kind=? AND verdict=? AND submission_id=?''', values).fetchone()
@@ -325,6 +330,9 @@ class Tracker:
         if outcome == 'accepted' and not self.acceptance(attempt_id)['accepted']:
             raise CoachError('Record accepted submission evidence before finishing as accepted.')
         at = self.now()
+        last = self.db.execute('SELECT ended_at FROM intervals WHERE attempt_id=? ORDER BY id DESC LIMIT 1', (attempt_id,)).fetchone()
+        if at < row['started_at'] or (last['ended_at'] and at < last['ended_at']):
+            raise CoachError('Clock moved backwards; correct the clock before finishing.')
         if row['state'] == 'running':
             self.close_interval(attempt_id, at)
         self.db.execute("UPDATE attempts SET state='finished', finished_at=?, outcome=? WHERE id=?", (at, outcome, attempt_id))
@@ -337,13 +345,13 @@ class Tracker:
         if row['state'] != 'finished':
             return
         interval = 1
-        if row['outcome'] == 'accepted' and row['hint_level'] == 0 and row['teach_back']:
+        if row['outcome'] == 'accepted' and self.independent(attempt_id) and row['teach_back']:
             interval = 30 if row['is_review'] else 7
         due = row['review_override'] or (datetime.fromisoformat(row['finished_at']).date() + timedelta(days=interval)).isoformat()
         self.db.execute('UPDATE attempts SET review_date=? WHERE id=?', (due, attempt_id))
 
     @write
-    def feedback(self, attempt_id, data, *, teach_back=False, review_date=None):
+    def feedback(self, attempt_id, data, *, teach_back=False, independent=False, review_date=None):
         row = self.row(attempt_id)
         if row['state'] != 'finished':
             raise CoachError('Finish solve timing before saving the debrief.')
@@ -351,6 +359,10 @@ class Tracker:
             raise CoachError('Feedback must be an object containing only the documented feedback fields.')
         if type(teach_back) is not bool:
             raise CoachError('Teach-back must be a boolean.')
+        if type(independent) is not bool:
+            raise CoachError('Independence confirmation must be a boolean.')
+        if independent and row['hint_level']:
+            raise CoachError('Cannot confirm independence when assistance is recorded.')
         for key, value in data.items():
             if key == 'mistakes':
                 if not isinstance(value, list) or len(value) > 30:
@@ -369,9 +381,16 @@ class Tracker:
                         (attempt_id, self.now(), json.dumps(data)))
         self.db.execute('UPDATE attempts SET teach_back=?, review_override=COALESCE(?,review_override) WHERE id=?',
                         (teach_back, review_date, attempt_id))
-        self.event(attempt_id, 'feedback', {'feedback': data, 'teach_back': teach_back, 'review_date': review_date})
+        self.event(attempt_id, 'feedback', {'feedback': data, 'teach_back': teach_back,
+                                          'independent': independent, 'review_date': review_date})
         self.schedule(attempt_id)
         return self.attempt(attempt_id)
+
+    def independent(self, attempt_id):
+        latest = self.db.execute("SELECT data FROM events WHERE attempt_id=? AND kind='feedback' ORDER BY id DESC LIMIT 1",
+                                 (attempt_id,)).fetchone()
+        return bool(latest and json.loads(latest['data']).get('independent') is True
+                    and self.row(attempt_id)['hint_level'] == 0)
 
     @write
     def end_session(self, summary=''):
@@ -405,11 +424,15 @@ class Tracker:
             if seconds >= 0:
                 totals[interval['phase']] += seconds
         wall = (datetime.fromisoformat(result['finished_at'] or now) - datetime.fromisoformat(result['started_at'])).total_seconds()
+        boundary = datetime.fromisoformat(result['finished_at'] or now)
+        clock_error = invalid or wall < 0 or any(
+            interval['ended_at'] and datetime.fromisoformat(interval['ended_at']) > boundary
+            for interval in intervals)
         result['timing'] = {'phase_seconds': {k: round(v, 3) for k, v in totals.items()} if not invalid else dict.fromkeys(PHASES),
                             'active_seconds': round(sum(totals.values()), 3) if not invalid else None,
                             'wall_seconds': round(wall, 3) if wall >= 0 else None,
-                            'confirmed': bool(result['timing_confirmed']) and not invalid,
-                            'clock_error': invalid or wall < 0}
+                            'confirmed': bool(result['timing_confirmed']) and not clock_error,
+                            'clock_error': bool(clock_error)}
         result['intervals'] = intervals
         result['events'] = [{**dict(r), 'data': json.loads(r['data'])} for r in self.db.execute('SELECT * FROM events WHERE attempt_id=? ORDER BY id', (attempt_id,))]
         result['snapshots'] = [dict(r) for r in self.db.execute('SELECT id,created_at,language,sha256 FROM snapshots WHERE attempt_id=? ORDER BY id', (attempt_id,))]
@@ -417,7 +440,8 @@ class Tracker:
         feedback = self.db.execute('SELECT data FROM feedback WHERE attempt_id=?', (attempt_id,)).fetchone()
         result['feedback'] = json.loads(feedback['data']) if feedback else None
         result['acceptance'] = self.acceptance(attempt_id)
-        result['independent'] = result['hint_level'] == 0
+        result['independent'] = self.independent(attempt_id)
+        result['assistance'] = 'assisted' if result['hint_level'] else ('independent' if result['independent'] else 'unconfirmed')
         return result
 
     def status(self):

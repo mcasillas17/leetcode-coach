@@ -5,12 +5,29 @@ from test_tracker import TrackerFixture
 
 
 class ReportTests(TrackerFixture):
+    def test_zero_logged_hints_does_not_establish_independent_solving(self):
+        a = self.start()
+        self.accepted(a)
+        self.tracker.finish(a, 'accepted')
+        self.assertEqual(build_report(self.tracker)['totals']['independent_solves'], 0)
+        self.tracker.feedback(a, {'approach': 'User explained their own work'}, teach_back=True, independent=True)
+        self.assertEqual(build_report(self.tracker)['totals']['independent_solves'], 1)
+
+    def test_clock_invalid_finished_attempt_is_excluded_from_aggregate(self):
+        a = self.start()
+        self.clock.advance(10)
+        self.tracker.finish(a, 'abandoned')
+        # An inconsistent legacy/imported timestamp must never produce confirmed totals.
+        self.tracker.db.execute('UPDATE attempts SET finished_at=started_at WHERE id=?', (a,))
+        report = build_report(self.tracker)
+        self.assertEqual(report['totals']['timing_excluded'], 1)
+
     def test_attempt_groups_separate_encounters_and_exclude_unconfirmed_timing(self):
         a = self.start()
         self.clock.advance(10)
         self.accepted(a)
         self.tracker.finish(a, 'accepted')
-        self.tracker.feedback(a, {'mistakes': ['forgot-duplicates']}, teach_back=True)
+        self.tracker.feedback(a, {'mistakes': ['forgot-duplicates']}, teach_back=True, independent=True)
         b = self.start(review=True)
         self.clock.advance(999)
         self.tracker.recover(b)

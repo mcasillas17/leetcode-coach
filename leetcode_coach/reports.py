@@ -44,7 +44,7 @@ def build_report(tracker, group_by='problem', session_id=None):
         labels = {
             'problem': [attempt['slug']], 'topic': attempt['problem'].get('tags', []) or ['unclassified'],
             'difficulty': [attempt['problem']['difficulty']], 'language': [attempt['language']],
-            'assistance': ['independent' if attempt['independent'] else 'assisted'],
+            'assistance': [attempt['assistance']],
             'encounter': [attempt['encounter']],
         }[group_by]
         for label in set(labels):
@@ -92,7 +92,7 @@ def render_markdown(report):
         lines.extend([f"### {attempt['id']}. {safe(attempt['problem']['title'])}", '',
                       f"{safe(attempt['outcome'] or attempt['state'])} · {safe(attempt['language'])} · "
                       f"{attempt['encounter']} encounter · "
-                      f"{'independent' if attempt['independent'] else 'assisted'} · "
+                      f"{attempt['assistance']} independence/assistance · "
                       f"{attempt['hint_count']} hints (maximum level {attempt['hint_level']})", '',
                       f"Solve: {duration(timing['active_seconds'])} "
                       f"({'confirmed' if timing['confirmed'] else 'unconfirmed'}); "
