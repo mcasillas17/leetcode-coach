@@ -1,0 +1,14 @@
+.coach/
+workspace/
+backups/
+reports/
+.superpowers/
+__pycache__/
+*.py[cod]
+.venv/
+.env
+.env.*
+!.env.example
+.DS_Store
+.codex/config.toml
+coach.local.json
