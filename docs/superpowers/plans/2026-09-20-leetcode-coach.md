@@ -92,3 +92,12 @@
 - Final review: independent reviewer verified fixes and found no remaining material issues in the focused follow-up. `make check`: 33 tests passed.
 - Integration limit: authenticated LeetCode judging and VS Code login require the user's account setup and are not claimed tested. Public MCP lookup and offline operation are verified.
 - Local setup: empty private database initialized and credential-free project MCP configuration copied into ignored `.codex/config.toml`; no sample attempts added to personal progress.
+
+### Subsequent integration updates
+
+The execution record above describes the original implementation. The project now
+owns its MCP server and supports authenticated testing/submission using macOS
+Keychain. After the 1.1.1 test-ID fix (`d1212b4`), live testing and a full submission
+completed successfully with snapshot-bound MCP evidence in the local tracker.
+See `docs/local-mcp.md` for current boundaries and `docs/coaching-evaluation.md`
+for validation details. Automated tests continue to use fixtures without accounts.

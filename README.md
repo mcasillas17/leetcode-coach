@@ -127,9 +127,19 @@ On macOS, run this yourself in a local interactive terminal from the repository 
 python3 -m leetcode_coach.credentials login
 ```
 
-Sign in to `leetcode.com` in your browser. In its developer tools, find the site's
-cookies and copy the values of `LEETCODE_SESSION` and `csrftoken` into the two hidden
-terminal prompts. Never paste them into chat, source files, config, or commands.
+To find the values in Chrome on macOS:
+
+1. Sign in to `https://leetcode.com` in Chrome.
+2. Press **Command + Option + I** to open Developer Tools.
+3. Select **Application** (under **»** if hidden).
+4. Under **Storage**, expand **Cookies** and select `https://leetcode.com`.
+5. Copy the **Value** of `LEETCODE_SESSION`, paste it into the terminal's matching
+   prompt, and press Enter. Copy only the value, without its name or quotes.
+6. Repeat for `csrftoken` at the second prompt.
+
+See [Chrome's cookie inspector guide](https://developer.chrome.com/docs/devtools/application/cookies).
+Pasted characters do not appear in the terminal; input is deliberately hidden.
+Never paste these values into chat, source files, config, or commands.
 Login stores them in macOS Keychain; it does not verify the session. macOS may ask
 you to allow Python to access the Keychain entry. No browser data is read automatically.
 
@@ -333,9 +343,12 @@ progress or submit solutions. The dependency-free CI job checks Python 3.10 and
 
 Live problem, search and daily-challenge lookup were checked without credentials.
 Live checks remain explicit because LeetCode's public website API is undocumented
-and may change or be unavailable. Authenticated judge transport is tested with
-synthetic responses; a real account submission has not been validated. Native
-Keychain create/read/update/delete was checked with a disposable dummy entry.
+and may change or be unavailable. After the 1.1.1 test-ID fix, live authenticated
+testing and a full submission both completed successfully, with matching MCP
+evidence recorded against their snapshots. Automated tests still use synthetic
+responses and never access a real account. Native Keychain create/read/update/delete
+was also checked with a disposable dummy entry. These checks cover the observed
+workflow, not every language, account, or future website change.
 
 See [coaching behavior evaluation](docs/coaching-evaluation.md) for scenario results.
 

@@ -127,8 +127,12 @@ community integration and validated live. Judge request shapes were inspected in
 [the community MCP source](https://github.com/jinzcdev/leetcode-mcp-server/blob/126115fc6e89e60125474e721d985afdf159c55f/src/leetcode/leetcode-global-service.ts)
 and [leetcode-cli](https://github.com/leetcode-tools/leetcode-cli/blob/master/lib/plugins/leetcode.js),
 then tested with synthetic responses. No third-party LeetCode runtime is required.
-Real authenticated execution/submission has not been validated with a user account. If upstream changes or blocks access, use the website and supplied
-problem details while maintaining local practice history.
+After the 1.1.1 test-ID fix, live authenticated testing and a full submission
+completed successfully. Local records contain accepted MCP evidence for both,
+bound to their frozen snapshots. This validates the observed account workflow;
+it does not establish compatibility with every language or future API change.
+If upstream changes or blocks access, use the website and supplied problem details
+while maintaining local practice history.
 
 `make check` verifies the dependency-free tracker; optional tests skip when their
 SDK/network dependencies are absent. `make check-mcp` uses `.venv` to run all tests

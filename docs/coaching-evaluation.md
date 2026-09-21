@@ -100,4 +100,21 @@ Independent review reproduced concurrent-poll cache regression, echoed-input
 fallback and contradictory acceptance handling; regression tests failed before
 the fixes and passed afterward. The bounded follow-up found no remaining
 material issues. Native Keychain CRUD was separately exercised with a disposable
-dummy entry. No real account credential or authenticated LeetCode request was used.
+dummy entry. That fixture-based evaluation used no real account credential or
+authenticated LeetCode request.
+
+## Live judge validation after the test-ID fix
+
+Version 1.1.0 rejected valid `runcode_` IDs containing decimal timestamps. Version
+1.1.1 accepts the period while preserving the fixed prefix, length limit and safe
+URL path characters. A regression test covers the full send/poll/deduplication
+flow with a timestamped ID, and a separate test rejects path/query injection.
+The full MCP suite passed with 68 tests; CI passed on commit `d1212b4`.
+
+The user subsequently confirmed a live test pass. A read-only check of local judge
+records also found an accepted full submission, with both results recorded as MCP
+evidence against frozen snapshots. This is live integration evidence, separate
+from the synthetic coaching scenarios above. No source, problem identity, remote
+judge IDs, credentials, or personal progress details are copied into this document.
+Automated checks remain account-free; broader language/account coverage and future
+upstream behavior are not established by these successful runs.
