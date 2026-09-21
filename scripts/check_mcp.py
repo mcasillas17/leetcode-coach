@@ -1,4 +1,4 @@
-"""Smoke-test the pinned LeetCode server without credentials or submissions."""
+"""Smoke-test the repository's MCP server without credentials or submissions."""
 
 import argparse
 import json
@@ -9,20 +9,21 @@ import subprocess
 import sys
 import threading
 import time
+from pathlib import Path
 
 
-PACKAGE = '@jinzcdev/leetcode-mcp-server@1.4.0'
+ROOT = Path(__file__).resolve().parent.parent
 
 
 class ProbeError(RuntimeError):
     pass
 
 
-def probe(command, problem=None, timeout=30):
+def probe(command, problem=None, timeout=30, cwd=None):
     environment = {**os.environ, 'LEETCODE_SESSION': '', 'LEETCODE_SITE': 'global'}
     process = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                                stderr=subprocess.DEVNULL, text=True, encoding='utf-8',
-                               env=environment, start_new_session=os.name == 'posix')
+                               env=environment, cwd=cwd, start_new_session=os.name == 'posix')
     messages = queue.Queue()
 
     def read_stdout():
@@ -73,7 +74,7 @@ def probe(command, problem=None, timeout=30):
         tools = listing.get('tools')
         if not isinstance(tools, list) or not tools:
             raise ProbeError('MCP tool listing is empty or malformed.')
-        result = {'package': PACKAGE, 'server': initialized.get('serverInfo'),
+        result = {'server': initialized.get('serverInfo'),
                   'protocol': initialized.get('protocolVersion'),
                   'tools': [{'name': tool['name'], 'inputSchema': tool.get('inputSchema')} for tool in tools]}
         if problem:
@@ -137,7 +138,7 @@ def main():
     parser.add_argument('--problem', help='Optionally retrieve public problem metadata by slug')
     args = parser.parse_args()
     try:
-        result = probe(['npx', '-y', PACKAGE, '--site', 'global'], args.problem)
+        result = probe([sys.executable, str(ROOT / 'scripts' / 'serve_mcp.py')], args.problem)
         print(json.dumps(result, indent=2))
         return 0
     except (ProbeError, OSError) as exc:

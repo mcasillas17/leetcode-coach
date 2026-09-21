@@ -5,8 +5,8 @@ reasoning, gives requested hints, reviews correctness and performance, and recor
 how your attempts change over time.
 
 The tracker runs locally with **Python 3.10+ and no Python dependencies**. It works
-without a LeetCode account connection. Optional MCP tools provide problem lookup
-and authenticated judge operations.
+without a LeetCode account connection. The optional repository-owned MCP server
+provides public problem lookup and tracker tools. It does not log in, execute solutions, or submit code.
 
 ## Start coaching
 
@@ -54,71 +54,92 @@ Create ignored `coach.local.json` to override only the settings you want:
 
 Supported practice languages: Python 3, JavaScript, TypeScript, Java, C++, C, C#,
 Go, Rust, Swift, Kotlin, and Ruby. This controls file extensions and recorded
-language; it does not install compilers. MCP language support is determined by
-the connected server. Update the VS Code extension's default language separately
-if you use it.
+language; it does not install compilers. Public problem lookup returns the starter
+signatures supplied by LeetCode. Pass your configured language when starting an
+attempt through MCP.
 
-## Connect LeetCode MCP
+## Connect the local MCP server
 
-The integration is pinned to
-[`@jinzcdev/leetcode-mcp-server@1.4.0`](https://github.com/jinzcdev/leetcode-mcp-server).
-Use Node.js 20+ with `npx` available to the Codex host.
+The server lives in this repository and uses the official Python MCP SDK. It runs
+locally over stdio, with no listening port, telemetry, login cookie, shell execution,
+or runtime package downloads. The CLI still works without these optional dependencies.
 
-Copy the supplied project configuration, preserving any existing settings:
-
-```bash
-mkdir -p .codex
-cp -n config/leetcode-mcp.toml .codex/config.toml
-```
-
-If that file already exists, merge the `[mcp_servers.leetcode]` table instead.
-Open a fresh Codex session in this trusted project or restart its MCP connection.
-The setup disables community-solution tools to reduce accidental answer exposure.
-Public problem responses can still contain tags and hints; the coaching skill
-keeps those out of the interview conversation.
-
-Verify the external server independently:
+Set up the optional environment from the repository root (tested with Python 3.14
+on macOS; the SDK requires Python 3.10+):
 
 ```bash
-python3 scripts/check_mcp.py
-python3 scripts/check_mcp.py --problem two-sum
+python3 -m venv .venv
+.venv/bin/python -m pip install --require-hashes --only-binary=:all: -r requirements-mcp.txt
+.venv/bin/python scripts/serve_mcp.py --print-config
 ```
 
-The probe initializes the server, lists its actual tool schemas, and optionally
-retrieves public metadata. It explicitly clears `LEETCODE_SESSION` in its child
-process and never runs or submits a solution.
+Merge the printed `[mcp_servers.leetcode]` table into this project's
+`.codex/config.toml`, replacing the old table if it exists. Preserve unrelated
+settings. The output contains absolute paths, so the server works regardless of
+Codex's working directory. A placeholder template is in `config/leetcode-mcp.toml`.
+If you move the repository, regenerate the configuration. Open a new Codex task
+in this trusted project or restart the MCP connection to load the new server.
 
-For authenticated operations, supply `LEETCODE_SESSION` through the local Codex
-host's environment and restart the connection. Obtain the cookie from your signed-in
-LeetCode browser session using the [server's authentication instructions](https://github.com/jinzcdev/leetcode-mcp-server#authentication).
-Keep it out of chat, source files, Git, reports, and shell history. A terminal's
-environment is not automatically inherited by an already-running desktop app.
-The provided configuration forwards the variable; it never contains the cookie.
+No credentials are needed. Remove old `LEETCODE_SESSION`, `env_vars`, and `npx`
+settings from this server's configuration. The local server ignores LeetCode
+credentials even if present in its environment.
 
-With credentials present, the server registers `run_code`, `submit_solution`,
-and private submission-detail tools. The coach submits only at your request,
-using an immutable snapshot. Without credentials, submit through the website or
-VS Code and report the result; the tracker labels it **user-reported**.
+Verify the server and optionally make one public network request:
 
-Project MCP configuration is described in [OpenAI's MCP documentation](https://learn.chatgpt.com/docs/extend/mcp?surface=cli).
-The coach checks the current session's tools instead of assuming a connection is active.
+```bash
+make check-mcp
+.venv/bin/python scripts/check_mcp.py --problem two-sum
+```
+
+The first command runs all tests and a real stdio handshake/tool listing without
+network access. The second checks live problem lookup, without credentials or
+submissions. Public APIs are undocumented and can change or be blocked; failures
+are reported as errors, never as empty successful results or judge verdicts.
+
+The server exposes 20 tools:
+
+| Purpose | Tools |
+| --- | --- |
+| Public lookup | `get_problem`, `search_problems`, `get_daily_challenge` |
+| Practice state | `get_status`, `get_attempt`, `start_attempt`, `change_phase`, `pause_attempt`, `resume_attempt`, `finish_attempt` |
+| Timing recovery | `recover_attempt`, `correct_timing`, `confirm_timing` |
+| Assistance and evidence | `record_hint`, `snapshot_solution`, `get_snapshot`, `record_judge_result` |
+| Debrief and progress | `save_feedback`, `get_progress`, `end_session` |
+
+Problem lookup returns plain text, examples and starter signatures, but excludes
+hints, tags, editorials and community solutions. Search and the daily tool return
+metadata; call `get_problem` for the statement. Premium-only content is not bypassed.
+Image-only parts of a statement should be viewed on the linked LeetCode page.
+
+Tracker tools use the same `.coach/progress.sqlite3` as the CLI. `get_snapshot`
+returns frozen solution code to the MCP host/model for review. Progress and notes
+also enter the conversation when requested; local storage does not imply that
+model conversations stay on your machine. Public lookup sends only the requested
+slug/search filters to `leetcode.com`, never your solutions or progress.
+
+To submit, snapshot your saved solution, pause timing, and use the LeetCode website.
+Record the matching result with `record_judge_result`; this always records
+**user-reported** evidence, never verified MCP acceptance. Passing `source: mcp`
+cannot promote it. Authenticated submissions and local code execution are outside
+this version. Existing historical verified records remain intact.
+
+See [MCP security and maintenance](docs/local-mcp.md) for trust boundaries, upstream
+limitations and dependency updates. MCP itself is documented in the
+[official server guide](https://modelcontextprotocol.io/docs/develop/build-server).
 
 ## VS Code
 
-Open this repository folder. The recommended extensions are
-[LeetCode](https://marketplace.visualstudio.com/items?itemName=LeetCode.vscode-leetcode)
-and [Codex](https://learn.chatgpt.com/docs/codex/ide). The LeetCode extension is optional;
-editing normal files in VS Code is enough when you use MCP or the website to judge.
+Open this repository and edit the returned `working_file` as a normal source file.
+The recommended extension is [Codex](https://learn.chatgpt.com/docs/codex/ide).
+The LeetCode VS Code extension is no longer recommended; it is not required for any
+local MCP workflow. Disable it in VS Code if previously installed. This project
+sets `leetcode.allowReportData` to false for this workspace, but that does not fix
+the extension's other audited risks or uninstall it globally.
 
-Workspace settings put extension files in `workspace/leetcode/` and select
-`leetcode.com`. Follow the extension's documented sign-in workaround if ordinary
-login fails. Extension login and MCP authentication are separate.
-
-Tracker-created files use a new numbered directory per attempt, preventing an old
-answer from appearing in a recall exercise. To use an existing extension-generated
-file, start with `--file workspace/leetcode/1.two-sum.py`; the tracker preserves it.
-For a blind redo, use a new blank attempt file. The coach sees saved file contents,
-not unsaved keystrokes. There is no automatic editor-activity tracking.
+Tracker-created files use a new numbered directory per attempt so a recall
+exercise does not expose the old answer. Existing files can still be adopted
+through the CLI's `start --file workspace/leetcode/...` option. MCP creates a new
+blank attempt file. The coach reads saved files, not unsaved editor activity.
 
 ## Timing and records
 
@@ -256,14 +277,13 @@ make check
 ```
 
 Tests use temporary roots and controlled clocks; they never populate your personal
-progress or submit solutions. CI checks Python 3.10 and 3.14. Live MCP checks are
-separate because they require Node, network access, and an available external service.
+progress or submit solutions. The dependency-free CI job checks Python 3.10 and
+3.14. The MCP job installs the hash-locked environment on Python 3.14 and runs
+`make check-mcp`, including protocol tests without contacting LeetCode.
 
-During implementation, the pinned server initialized, listed nine public tools,
-and retrieved Two Sum metadata without authentication. Authenticated test/submission
-tool definitions were inspected in the installed package; real authenticated judge
-execution and VS Code sign-in have not been exercised. The tracker/manual fallback
-are tested independently of those account-dependent operations.
+Live problem, search and daily-challenge lookup were checked without credentials.
+Live checks remain explicit because LeetCode's public website API is undocumented
+and may change or be unavailable. Account login/submission are outside this server.
 
 See [coaching behavior evaluation](docs/coaching-evaluation.md) for scenario results.
 

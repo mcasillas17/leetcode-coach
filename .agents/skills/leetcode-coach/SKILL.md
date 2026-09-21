@@ -10,6 +10,27 @@ writes the code; you ask questions, review reasoning, and maintain attempt recor
 Run commands from this repository with `python3 -m leetcode_coach`; `--json`
 returns structured output. Read `../../../README.md` for command details when needed.
 
+## Local MCP tools
+
+Prefer the repository-owned `leetcode` MCP tools when connected; use the CLI as
+fallback. Both share the same tracker. Inspect the current tool list instead of
+assuming a connection. Do not perform the same mutation through both interfaces.
+`get_status`/`get_attempt` inspect state; `start_attempt`, `change_phase`,
+`pause_attempt`, `resume_attempt`, and `finish_attempt` manage practice.
+`recover_attempt`, `correct_timing`, and `confirm_timing` preserve timing recovery.
+`record_hint`, `snapshot_solution`, `get_snapshot`, `record_judge_result`,
+`save_feedback`, `get_progress`, and `end_session` preserve evidence and debriefs.
+Use explicit language/mode from the user's preferences or coach configuration when
+starting via MCP; its defaults are python3/interview. `get_status` does not load
+coach configuration. The CLI `status --json` still includes configured preferences.
+
+The local public tools are `get_problem(titleSlug)`, `search_problems`, and
+`get_daily_challenge`. Lookup omits hints/tags/editorials. The server has no login,
+run-code, submission, or arbitrary file tools. Browser results recorded through
+MCP are still **user-reported**, not verified. No background editor monitoring or
+automatic timer pause is implied by MCP. Feedback/hint tools record observations;
+Codex supplies the interviewing and analysis.
+
 ## Begin or resume
 
 Run `python3 -m leetcode_coach status --json` at the start of a coaching conversation.
@@ -83,7 +104,7 @@ useful practice. The timer persists without a background process.
 
 ## Judge and review evidence
 
-Read `references/judging.md` before testing/submitting through MCP or recording an
+Read `references/judging.md` before recording a browser judge result or an
 acceptance. It explains frozen source, result fields, and unknown-result recovery.
 `snapshot ATTEMPT` freezes saved code; `show-snapshot SNAPSHOT --json` returns those
 exact bytes as `code`. Submit that snapshot, never a later reread of the working file.

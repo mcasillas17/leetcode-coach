@@ -1,9 +1,7 @@
-# Copy this into this trusted project's .codex/config.toml (merge if it exists).
-# No cookie is required for public problem lookup.
+# Replace both /ABSOLUTE/PATH/leetcode-coach paths, then merge into .codex/config.toml.
+# Local stdio only. No cookie, npx, downloaded server, or shell wrapper.
 [mcp_servers.leetcode]
-command = "npx"
-args = ["-y", "@jinzcdev/leetcode-mcp-server@1.4.0", "--site", "global"]
-env_vars = ["LEETCODE_SESSION"]
-startup_timeout_sec = 30
-tool_timeout_sec = 45
-disabled_tools = ["list_problem_solutions", "get_problem_solution"]
+command = "/ABSOLUTE/PATH/leetcode-coach/.venv/bin/python"
+args = ["/ABSOLUTE/PATH/leetcode-coach/scripts/serve_mcp.py"]
+startup_timeout_sec = 15
+tool_timeout_sec = 30
