@@ -276,6 +276,12 @@ class Tracker:
     @write
     def judge(self, attempt_id, snapshot_id, source, verdict, *, kind='submission',
               submission_id=None, runtime_ms=None, memory_mb=None):
+        return self._record_judge(attempt_id, snapshot_id, source, verdict, kind=kind,
+                                  submission_id=submission_id, runtime_ms=runtime_ms, memory_mb=memory_mb)
+
+    def _record_judge(self, attempt_id, snapshot_id, source, verdict, *, kind='submission',
+                      submission_id=None, runtime_ms=None, memory_mb=None):
+        """Record evidence inside the caller's existing write transaction."""
         self.row(attempt_id)
         if self.snapshot_info(snapshot_id)['attempt_id'] != attempt_id:
             raise CoachError('Snapshot belongs to another attempt.')

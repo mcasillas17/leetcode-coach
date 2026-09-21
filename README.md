@@ -6,7 +6,8 @@ how your attempts change over time.
 
 The tracker runs locally with **Python 3.10+ and no Python dependencies**. It works
 without a LeetCode account connection. The optional repository-owned MCP server
-provides public problem lookup and tracker tools. It does not log in, execute solutions, or submit code.
+provides public problem lookup, tracker tools, and optional authenticated testing and
+submission through LeetCode. Solutions never execute on your machine through this server.
 
 ## Start coaching
 
@@ -61,8 +62,8 @@ attempt through MCP.
 ## Connect the local MCP server
 
 The server lives in this repository and uses the official Python MCP SDK. It runs
-locally over stdio, with no listening port, telemetry, login cookie, shell execution,
-or runtime package downloads. The CLI still works without these optional dependencies.
+locally over stdio, with no listening port, telemetry, shell execution, or runtime
+package downloads. Optional account credentials are stored in macOS Keychain. The CLI still works without these optional dependencies.
 
 Set up the optional environment from the repository root (tested with Python 3.14
 on macOS; the SDK requires Python 3.10+):
@@ -80,7 +81,7 @@ Codex's working directory. A placeholder template is in `config/leetcode-mcp.tom
 If you move the repository, regenerate the configuration. Open a new Codex task
 in this trusted project or restart the MCP connection to load the new server.
 
-No credentials are needed. Remove old `LEETCODE_SESSION`, `env_vars`, and `npx`
+Public lookup and tracking need no credentials. Remove old `LEETCODE_SESSION`, `env_vars`, and `npx`
 settings from this server's configuration. The local server ignores LeetCode
 credentials even if present in its environment.
 
@@ -96,10 +97,11 @@ network access. The second checks live problem lookup, without credentials or
 submissions. Public APIs are undocumented and can change or be blocked; failures
 are reported as errors, never as empty successful results or judge verdicts.
 
-The server exposes 20 tools:
+The server exposes 23 tools:
 
 | Purpose | Tools |
 | --- | --- |
+| LeetCode judge | `run_code`, `submit_solution`, `get_submission_status` |
 | Public lookup | `get_problem`, `search_problems`, `get_daily_challenge` |
 | Practice state | `get_status`, `get_attempt`, `start_attempt`, `change_phase`, `pause_attempt`, `resume_attempt`, `finish_attempt` |
 | Timing recovery | `recover_attempt`, `correct_timing`, `confirm_timing` |
@@ -117,11 +119,52 @@ also enter the conversation when requested; local storage does not imply that
 model conversations stay on your machine. Public lookup sends only the requested
 slug/search filters to `leetcode.com`, never your solutions or progress.
 
-To submit, snapshot your saved solution, pause timing, and use the LeetCode website.
-Record the matching result with `record_judge_result`; this always records
-**user-reported** evidence, never verified MCP acceptance. Passing `source: mcp`
-cannot promote it. Authenticated submissions and local code execution are outside
-this version. Existing historical verified records remain intact.
+## Enable LeetCode testing and submission
+
+On macOS, run this yourself in a local interactive terminal from the repository root:
+
+```bash
+python3 -m leetcode_coach.credentials login
+```
+
+Sign in to `leetcode.com` in your browser. In its developer tools, find the site's
+cookies and copy the values of `LEETCODE_SESSION` and `csrftoken` into the two hidden
+terminal prompts. Never paste them into chat, source files, config, or commands.
+Login stores them in macOS Keychain; it does not verify the session. macOS may ask
+you to allow Python to access the Keychain entry. No browser data is read automatically.
+
+```bash
+python3 -m leetcode_coach.credentials status
+python3 -m leetcode_coach.credentials logout
+```
+
+`status` checks only whether credentials are stored. `logout` deletes that local
+entry; it does not revoke the browser session on LeetCode. Public tools continue to
+work without credentials and on other operating systems. Authenticated tools
+currently support `leetcode.com` and macOS Keychain only.
+
+After reloading the MCP connection, say **“Test my saved solution with the example
+input”** or **“Submit my saved solution.”** The coach freezes the saved file, sends
+that exact snapshot through `run_code` or `submit_solution`, and polls the returned
+local `operation_id` with `get_submission_status`. Each poll makes one request;
+wait at least two seconds between polls, with at most ten polls per user request.
+
+The server verifies the problem's internal ID and language before sending code,
+pauses solve timing before the judge request, and records a recognized result
+against the frozen snapshot. Timing stays paused until you resume active work.
+A test pass does not establish full submission acceptance. Only an accepted full
+submission observed through authenticated polling creates verified MCP evidence.
+
+Repeated calls for the same snapshot and test input reuse the existing operation.
+If a POST response is lost, the outcome stays **unknown** and the server does not
+resend. Inspect your LeetCode history before explicitly requesting another attempt;
+the coach must not create new snapshots to bypass this protection. If an operation
+has a remote ID, it can be polled again. Account/session errors or website blocks
+require local login or the browser workflow; the server does not bypass them.
+
+For the browser workflow, snapshot your source, pause timing, submit that exact code
+on the website, then record the matching result with `record_judge_result`. This
+always records **user-reported** evidence. Passing `source: mcp` cannot promote it.
 
 See [MCP security and maintenance](docs/local-mcp.md) for trust boundaries, upstream
 limitations and dependency updates. MCP itself is documented in the
@@ -283,7 +326,9 @@ progress or submit solutions. The dependency-free CI job checks Python 3.10 and
 
 Live problem, search and daily-challenge lookup were checked without credentials.
 Live checks remain explicit because LeetCode's public website API is undocumented
-and may change or be unavailable. Account login/submission are outside this server.
+and may change or be unavailable. Authenticated judge transport is tested with
+synthetic responses; a real account submission has not been validated. Native
+Keychain create/read/update/delete was checked with a disposable dummy entry.
 
 See [coaching behavior evaluation](docs/coaching-evaluation.md) for scenario results.
 

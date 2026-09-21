@@ -25,11 +25,14 @@ starting via MCP; its defaults are python3/interview. `get_status` does not load
 coach configuration. The CLI `status --json` still includes configured preferences.
 
 The local public tools are `get_problem(titleSlug)`, `search_problems`, and
-`get_daily_challenge`. Lookup omits hints/tags/editorials. The server has no login,
-run-code, submission, or arbitrary file tools. Browser results recorded through
-MCP are still **user-reported**, not verified. No background editor monitoring or
-automatic timer pause is implied by MCP. Feedback/hint tools record observations;
-Codex supplies the interviewing and analysis.
+`get_daily_challenge`. Lookup omits hints/tags/editorials. For a user-requested
+LeetCode test or submission, use `run_code` or `submit_solution` with a frozen
+snapshot, then `get_submission_status` with its local operation ID. Read
+`references/judging.md` first. The server pauses timing before sending; it does not
+monitor editor activity or execute solutions locally. Account setup happens only
+in the user's local terminal through macOS Keychain, never through chat or MCP
+arguments. Browser results remain **user-reported**. Feedback/hint tools record
+observations; Codex supplies the interviewing and analysis.
 
 ## Begin or resume
 
@@ -104,8 +107,8 @@ useful practice. The timer persists without a background process.
 
 ## Judge and review evidence
 
-Read `references/judging.md` before recording a browser judge result or an
-acceptance. It explains frozen source, result fields, and unknown-result recovery.
+Read `references/judging.md` before testing, submitting, polling, or recording a
+judge result. It explains frozen source, result fields, and unknown-result recovery.
 `snapshot ATTEMPT` freezes saved code; `show-snapshot SNAPSHOT --json` returns those
 exact bytes as `code`. Submit that snapshot, never a later reread of the working file.
 

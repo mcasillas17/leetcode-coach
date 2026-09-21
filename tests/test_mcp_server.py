@@ -69,7 +69,7 @@ class MCPServerTests(unittest.IsolatedAsyncioTestCase):
     async def test_tools_cannot_escape_workspace_claim_verified_evidence_or_execute(self):
         from mcp.server.mcpserver.exceptions import ToolError
         tools = {tool.name: tool for tool in await self.server.list_tools()}
-        for forbidden in ('submit_solution', 'run_code', 'execute', 'read_file', 'restore', 'get_problem_solution'):
+        for forbidden in ('execute', 'read_file', 'restore', 'get_problem_solution'):
             self.assertNotIn(forbidden, tools)
         for schema in (tools['start_attempt'].input_schema, tools['record_judge_result'].input_schema):
             self.assertNotIn('root', schema.get('properties', {}))
@@ -77,6 +77,13 @@ class MCPServerTests(unittest.IsolatedAsyncioTestCase):
             self.assertNotIn('source', schema.get('properties', {}))
         self.assertTrue(tools['get_problem'].annotations.read_only_hint)
         self.assertFalse(tools['start_attempt'].annotations.read_only_hint)
+        for name in ('run_code', 'submit_solution', 'get_submission_status'):
+            self.assertIn(name, tools)
+            self.assertFalse(tools[name].annotations.read_only_hint)
+        self.assertTrue(tools['submit_solution'].annotations.destructive_hint)
+        for name in ('run_code', 'submit_solution'):
+            self.assertNotIn('code', tools[name].input_schema.get('properties', {}))
+            self.assertNotIn('credentials', tools[name].input_schema.get('properties', {}))
         with self.assertRaises(ToolError):
             await self.call('start_attempt', slug='../escape', frontend_id=1, title='X', difficulty='Easy')
         await self.start()

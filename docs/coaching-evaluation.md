@@ -74,3 +74,30 @@ public tools, and returned public Two Sum metadata. Its authenticated judge tool
 definitions were inspected in the installed package. Authenticated execution and
 VS Code sign-in were not exercised. These checks do not claim the current Codex
 conversation has reloaded the new project MCP configuration.
+
+## Repository-owned authenticated judge update
+
+A read-only instruction evaluation first found that the public-only skill still
+routed an explicitly requested submission to the browser, despite the new direct
+tools. It also lacked a contract for local operation IDs and ambiguous POSTs.
+After updating the skill and judging reference, the evaluator simulated these
+scenarios without invoking account tools:
+
+| Scenario | Observed instruction-driven response |
+| --- | --- |
+| Submit saved source | Freeze once, submit that snapshot, retain local operation ID, poll at least two seconds apart with ten-call limit. |
+| Lost POST with no remote ID | Preserve unknown outcome; inspect website history; never silently create another snapshot and resend. |
+| Known pending remote ID | Poll the existing local operation; do not send again. |
+| Review-only request | Review source without testing or submitting. |
+| Missing credentials | Explain local terminal login or browser fallback; never request cookies in chat. |
+| Test pass | Keep separate from full submission acceptance. |
+| Accepted full submission | Use automatically recorded snapshot-bound MCP evidence; keep independence and teach-back separate. |
+
+This evaluation checks instruction clarity, not live judge behavior. Automated
+fixtures exercise registered MCP tools, frozen payloads, identity checks, timer
+pause, deduplication, malformed responses and atomic result persistence.
+Independent review reproduced concurrent-poll cache regression, echoed-input
+fallback and contradictory acceptance handling; regression tests failed before
+the fixes and passed afterward. The bounded follow-up found no remaining
+material issues. Native Keychain CRUD was separately exercised with a disposable
+dummy entry. No real account credential or authenticated LeetCode request was used.
